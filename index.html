@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Segurança da Moto</title>
+
+  <!-- Leaflet CSS & JS via CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #121212; 
+      color: #fff; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
+      padding: 20px; 
+      position: relative; 
+    }
+    .btn-voltar { 
+      position: absolute; 
+      top: 20px; 
+      left: 20px; 
+      background-color: #1e1e1e; 
+      color: #00e676; 
+      border: 2px solid #00e676; 
+      font-size: 1.5rem; 
+      width: 45px; 
+      height: 45px; 
+      border-radius: 50%; 
+      cursor: pointer; 
+      display: none; 
+      align-items: center; 
+      justify-content: center; 
+      z-index: 1000; 
+    }
+    h1 { 
+      margin-bottom: 20px; 
+      font-size: 2rem; 
+      color: #00e676; 
+      text-align: center; 
+    }
+    .button-container { 
+      display: flex; 
+      flex-wrap: wrap; 
+      justify-content: center; 
+      gap: 15px; 
+      max-width: 600px; 
+      width: 100%; 
+    }
+    .btn { 
+      background-color: #1e1e1e; 
+      color: #fff; 
+      border: 2px solid #00e676; 
+      padding: 15px 30px; 
+      font-size: 1rem; 
+      font-weight: bold; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      flex: 1 1 200px; 
+      text-align: center; 
+    }
+    .painel-pagina { 
+      display: none; 
+      flex-direction: column; 
+      gap: 12px; 
+      background-color: #1e1e1e; 
+      padding: 20px; 
+      border-radius: 8px; 
+      border: 1px solid #00e676; 
+      text-align: center; 
+      width: 100%; 
+      max-width: 500px; 
+    }
+    .status-gps { 
+      font-size: 0.9rem; 
+      color: #ffab00; 
+    }
+    #map { 
+      height: 280px; 
+      width: 100%; 
+      border-radius: 8px; 
+      border: 1px solid #00e676; 
+      margin-top: 10px; 
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #1e1e1e;
+      border: 2px solid #00e676;
+      padding: 25px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 230, 118, 0.2);
+    }
+    .modal-content h3 {
+      color: #00e676;
+      margin-bottom: 15px;
+    }
+    .modal-content input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #00e676;
+      background-color: #121212;
+      color: #fff;
+      text-align: center;
+      font-size: 1.1rem;
+      outline: none;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .modal-btn {
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .modal-btn-confirm {
+      background-color: #00e676;
+      color: #121212;
+      border: none;
+    }
+    .modal-btn-cancel {
+      background-color: transparent;
+      color: #ff5252;
+      border: 1px solid #ff5252;
+    }
+    .msg-erro {
+      color: #ff5252;
+      font-size: 0.85rem;
+      margin-top: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <button class="btn-voltar" id="btn-voltar">&#8592;</button>
+  <h1 id="titulo">Sistema de Segurança da Moto</h1>
+
+  <div class="button-container" id="botoes">
+    <button class="btn" id="btn-acesso">Acesso</button>
+    <button class="btn" id="btn-localizacao">Localização</button>
+    <button class="btn" id="btn-registro">Registro</button>
+    <button class="btn" id="btn-suporte">Suporte</button>
+  </div>
+
+  <!-- Painel Acesso -->
+  <div class="painel-pagina" id="acesso-info">
+    <p>🔑 <strong>Controle de Acesso</strong></p>
+    <p>Status da Ignição: Ligada</p>
+    <p>Alarme: Desativado</p>
+    <button class="btn" id="btn-bloquear" style="margin-top: 15px; padding: 8px 16px; font-size: 0.85rem; flex: none; width: auto;">Bloquear</button>
+  </div>
+
+  <!-- Painel Localização -->
+  <div class="painel-pagina" id="localizacao-info">
+    <p>📍 <strong>Localização em Tempo Real</strong></p>
+    <p id="txt-status" class="status-gps">Buscando satélites...</p>
+    <p>Velocidade: <span id="spd-val">--</span> km/h | Satélites: <span id="sat-val">--</span></p>
+    <div id="map"></div>
+  </div>
+
+  <!-- Painel Registro -->
+  <div class="painel-pagina" id="registro-info">
+    <p>📜 <strong>Histórico de Eventos</strong></p>
+    <p>• 10/09 14:30 - Alarme Ativado</p>
+  </div>
+
+  <!-- Painel Suporte -->
+  <div class="painel-pagina" id="suporte-info">
+    <p>📱 Suporte: <a href="tel:11999998888" style="color:#00e676;">(11) 99999-8888</a></p>
+  </div>
+
+  <!-- Modal de Senha -->
+  <div class="modal-overlay" id="modal-senha">
+    <div class="modal-content">
+      <h3>Digite a Senha</h3>
+      <input type="password" id="input-senha" placeholder="****" maxlength="8">
+      <p class="msg-erro" id="msg-erro">Senha incorreta!</p>
+      <div class="modal-buttons">
+        <button class="modal-btn modal-btn-cancel" id="btn-cancelar-modal">Cancelar</button>
+        <button class="modal-btn modal-btn-confirm" id="btn-confirmar-modal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // IP do seu ESP32 na rede local (Altere se necessário)
+    const ESP32_IP = "http://192.168.1.100"; // Substitua pelo IP exibido no Serial Monitor do ESP32
+
+    const btnAcesso = document.getElementById('btn-acesso');
+    const btnLocalizacao = document.getElementById('btn-localizacao');
+    const btnRegistro = document.getElementById('btn-registro');
+    const btnSuporte = document.getElementById('btn-suporte');
+    const btnVoltar = document.getElementById('btn-voltar');
+    const titulo = document.getElementById('titulo');
+    const botoes = document.getElementById('botoes');
+    const paginas = document.querySelectorAll('.painel-pagina');
+
+    const btnBloquear = document.getElementById('btn-bloquear');
+    const modalSenha = document.getElementById('modal-senha');
+    const inputSenha = document.getElementById('input-senha');
+    const btnConfirmarModal = document.getElementById('btn-confirmar-modal');
+    const btnCancelarModal = document.getElementById('btn-cancelar-modal');
+    const msgErro = document.getElementById('msg-erro');
+
+    let estaBloqueado = false;
+    let map = null;
+    let marker = null;
+
+    function esconderPaginas() { 
+      paginas.forEach(p => p.style.display = 'none'); 
+    }
+
+    function inicializarMapa(lat, lng) {
+      if (!map) {
+        map = L.map('map').setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+        marker = L.marker([lat, lng]).addTo(map).bindPopup('<b>Sua Moto</b>').openPopup();
+      }
+    }
+
+    function abrirPagina(idPagina, novoTitulo) {
+      esconderPaginas();
+      titulo.textContent = novoTitulo;
+      botoes.style.display = 'none';
+      document.getElementById(idPagina).style.display = 'flex';
+      btnVoltar.style.display = 'flex';
+      
+      if (idPagina === 'localizacao-info' && map) {
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+    }
+
+    btnAcesso.addEventListener('click', () => abrirPagina('acesso-info', 'Acesso ao Sistema'));
+    btnLocalizacao.addEventListener('click', () => abrirPagina('localizacao-info', 'Localização da Moto'));
+    btnRegistro.addEventListener('click', () => abrirPagina('registro-info', 'Registros do Sistema'));
+    btnSuporte.addEventListener('click', () => abrirPagina('suporte-info', 'Suporte do Sistema'));
+
+    btnVoltar.addEventListener('click', () => {
+      esconderPaginas();
+      titulo.textContent = 'Sistema de Segurança da Moto';
+      botoes.style.display = 'flex';
+      btnVoltar.style.display = 'none';
+    });
+
+    function abrirModalSenha() {
+      inputSenha.value = '';
+      msgErro.style.display = 'none';
+      modalSenha.style.display = 'flex';
+      inputSenha.focus();
+    }
+
+    function fecharModalSenha() {
+      modalSenha.style.display = 'none';
+    }
+
+    btnBloquear.addEventListener('click', abrirModalSenha);
+    btnCancelarModal.addEventListener('click', fecharModalSenha);
+
+    function validarSenha() {
+      const senhaDigitada = inputSenha.value;
+      if (senhaDigitada === "1234") {
+        fecharModalSenha();
+        estaBloqueado = !estaBloqueado;
+        if (estaBloqueado) {
+          btnBloquear.textContent = 'Desbloquear';
+          fetch(`${ESP32_IP}/api/bloquear`).catch(() => {});
+        } else {
+          btnBloquear.textContent = 'Bloquear';
+          fetch(`${ESP32_IP}/api/desbloquear`).catch(() => {});
+        }
+      } else {
+        msgErro.style.display = 'block';
+      }
+    }
+
+    btnConfirmarModal.addEventListener('click', validarSenha);
+    inputSenha.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') validarSenha();
+    });
+
+    function atualizarGPS() {
+      fetch(`${ESP32_IP}/api/gps`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.valid) {
+            document.getElementById('txt-status').style.display = 'none';
+            document.getElementById('spd-val').textContent = data.speed;
+            document.getElementById('sat-val').textContent = data.sats;
+
+            if (!map) {
+              inicializarMapa(data.lat, data.lng);
+            } else {
+              marker.setLatLng([data.lat, data.lng]);
+              map.panTo([data.lat, data.lng]);
+            }
+          } else {
+            document.getElementById('txt-status').style.display = 'block';
+            document.getElementById('txt-status').textContent = 'Sinal GPS fraco ou ausente...';
+          }
+        })
+        .catch(err => console.error('Erro ao buscar GPS:', err));
+    }
+
+    setInterval(atualizarGPS, 2000);
+    atualizarGPS();
+  </script>
+</body>
+</html>
+
+
+
