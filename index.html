@@ -5,94 +5,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Segurança da Moto</title>
 
-  <!-- Leaflet CSS & JS via CDN -->
+  <!-- Leaflet (Mapas) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- MQTT via WebSockets -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
   <style>
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    body { 
-      font-family: 'Segoe UI', sans-serif; 
-      background-color: #121212; 
-      color: #fff; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      min-height: 100vh; 
-      padding: 20px; 
-      position: relative; 
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
     }
-    .btn-voltar { 
-      position: absolute; 
-      top: 20px; 
-      left: 20px; 
-      background-color: #1e1e1e; 
-      color: #00e676; 
-      border: 2px solid #00e676; 
-      font-size: 1.5rem; 
-      width: 45px; 
-      height: 45px; 
-      border-radius: 50%; 
-      cursor: pointer; 
-      display: none; 
-      align-items: center; 
-      justify-content: center; 
-      z-index: 1000; 
+    .btn-voltar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: #1e1e1e;
+      color: #00e676;
+      border: 2px solid #00e676;
+      font-size: 1.5rem;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
     }
-    h1 { 
-      margin-bottom: 20px; 
-      font-size: 2rem; 
-      color: #00e676; 
-      text-align: center; 
+    h1 {
+      margin-bottom: 20px;
+      font-size: 2rem;
+      color: #00e676;
+      text-align: center;
     }
-    .button-container { 
-      display: flex; 
-      flex-wrap: wrap; 
-      justify-content: center; 
-      gap: 15px; 
-      max-width: 600px; 
-      width: 100%; 
+    .status-conexao {
+      font-size: 0.85rem;
+      margin-bottom: 15px;
+      color: #ffab00;
     }
-    .btn { 
-      background-color: #1e1e1e; 
-      color: #fff; 
-      border: 2px solid #00e676; 
-      padding: 15px 30px; 
-      font-size: 1rem; 
-      font-weight: bold; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      flex: 1 1 200px; 
-      text-align: center; 
+    .button-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      max-width: 600px;
+      width: 100%;
     }
-    .painel-pagina { 
-      display: none; 
-      flex-direction: column; 
-      gap: 12px; 
-      background-color: #1e1e1e; 
-      padding: 20px; 
-      border-radius: 8px; 
-      border: 1px solid #00e676; 
-      text-align: center; 
-      width: 100%; 
-      max-width: 500px; 
+    .btn {
+      background-color: #1e1e1e;
+      color: #fff;
+      border: 2px solid #00e676;
+      padding: 15px 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      flex: 1 1 200px;
+      text-align: center;
     }
-    .status-gps { 
-      font-size: 0.9rem; 
-      color: #ffab00; 
+    .painel-pagina {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #00e676;
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
     }
-    #map { 
-      height: 280px; 
-      width: 100%; 
-      border-radius: 8px; 
-      border: 1px solid #00e676; 
-      margin-top: 10px; 
+    .status-gps {
+      font-size: 0.9rem;
+      color: #ffab00;
     }
+    #map {
+      height: 280px;
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #00e676;
+      margin-top: 10px;
+    }
+    /* Estilos do Modal de Senha */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -166,6 +175,7 @@
 
   <button class="btn-voltar" id="btn-voltar">&#8592;</button>
   <h1 id="titulo">Sistema de Segurança da Moto</h1>
+  <p id="mqtt-status" class="status-conexao">Conectando ao servidor da moto...</p>
 
   <div class="button-container" id="botoes">
     <button class="btn" id="btn-acesso">Acesso</button>
@@ -177,15 +187,14 @@
   <!-- Painel Acesso -->
   <div class="painel-pagina" id="acesso-info">
     <p>🔑 <strong>Controle de Acesso</strong></p>
-    <p>Status da Ignição: Ligada</p>
-    <p>Alarme: Desativado</p>
-    <button class="btn" id="btn-bloquear" style="margin-top: 15px; padding: 8px 16px; font-size: 0.85rem; flex: none; width: auto;">Bloquear</button>
+    <p>Status do Bloqueio: <span id="status-bloqueio-txt" style="color: #00e676;">Desbloqueado</span></p>
+    <button class="btn" id="btn-bloquear" style="margin-top: 15px; padding: 10px 20px; font-size: 0.9rem; flex: none; width: auto; align-self: center;">Bloquear 🔒</button>
   </div>
 
   <!-- Painel Localização -->
   <div class="painel-pagina" id="localizacao-info">
     <p>📍 <strong>Localização em Tempo Real</strong></p>
-    <p id="txt-status" class="status-gps">Buscando satélites...</p>
+    <p id="txt-status" class="status-gps">Aguardando coordenadas da moto...</p>
     <p>Velocidade: <span id="spd-val">--</span> km/h | Satélites: <span id="sat-val">--</span></p>
     <div id="map"></div>
   </div>
@@ -193,7 +202,7 @@
   <!-- Painel Registro -->
   <div class="painel-pagina" id="registro-info">
     <p>📜 <strong>Histórico de Eventos</strong></p>
-    <p>• 10/09 14:30 - Alarme Ativado</p>
+    <p>• Sistema operacional via GPRS/MQTT</p>
   </div>
 
   <!-- Painel Suporte -->
@@ -215,9 +224,27 @@
   </div>
 
   <script>
-    // IP do seu ESP32 na rede local (Altere se necessário)
-    const ESP32_IP = "http://192.168.1.100"; // Substitua pelo IP exibido no Serial Monitor do ESP32
+    // Configurações do Broker MQTT (Usa WebSockets seguro na porta 8884)
+    const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+    const topicGps = 'moto/seguranca/gps';
+    const topicComando = 'moto/seguranca/comando';
 
+    // Conexão MQTT do Navegador
+    const mqttStatus = document.getElementById('mqtt-status');
+    const client = mqtt.connect(brokerUrl);
+
+    client.on('connect', () => {
+      mqttStatus.textContent = '🟢 Conectado à moto (Nuvem em Tempo Real)';
+      mqttStatus.style.color = '#00e676';
+      client.subscribe(topicGps);
+    });
+
+    client.on('error', (err) => {
+      mqttStatus.textContent = '🔴 Erro na Conexão com o Servidor';
+      mqttStatus.style.color = '#ff5252';
+    });
+
+    // Elementos da Interface
     const btnAcesso = document.getElementById('btn-acesso');
     const btnLocalizacao = document.getElementById('btn-localizacao');
     const btnRegistro = document.getElementById('btn-registro');
@@ -228,6 +255,7 @@
     const paginas = document.querySelectorAll('.painel-pagina');
 
     const btnBloquear = document.getElementById('btn-bloquear');
+    const statusBloqueioTxt = document.getElementById('status-bloqueio-txt');
     const modalSenha = document.getElementById('modal-senha');
     const inputSenha = document.getElementById('input-senha');
     const btnConfirmarModal = document.getElementById('btn-confirmar-modal');
@@ -235,12 +263,14 @@
     const msgErro = document.getElementById('msg-erro');
 
     let estaBloqueado = false;
+
+    function esconderPaginas() {
+      paginas.forEach(p => p.style.display = 'none');
+    }
+
+    // Leaflet Maps
     let map = null;
     let marker = null;
-
-    function esconderPaginas() { 
-      paginas.forEach(p => p.style.display = 'none'); 
-    }
 
     function inicializarMapa(lat, lng) {
       if (!map) {
@@ -253,13 +283,14 @@
       }
     }
 
+    // Navegação
     function abrirPagina(idPagina, novoTitulo) {
       esconderPaginas();
       titulo.textContent = novoTitulo;
       botoes.style.display = 'none';
       document.getElementById(idPagina).style.display = 'flex';
       btnVoltar.style.display = 'flex';
-      
+
       if (idPagina === 'localizacao-info' && map) {
         setTimeout(() => map.invalidateSize(), 200);
       }
@@ -277,6 +308,7 @@
       btnVoltar.style.display = 'none';
     });
 
+    // Lógica do Modal de Senha
     function abrirModalSenha() {
       inputSenha.value = '';
       msgErro.style.display = 'none';
@@ -295,13 +327,18 @@
       const senhaDigitada = inputSenha.value;
       if (senhaDigitada === "1234") {
         fecharModalSenha();
+
         estaBloqueado = !estaBloqueado;
         if (estaBloqueado) {
-          btnBloquear.textContent = 'Desbloquear';
-          fetch(`${ESP32_IP}/api/bloquear`).catch(() => {});
+          btnBloquear.textContent = 'Desbloquear 🔓';
+          statusBloqueioTxt.textContent = 'BLOQUEADO';
+          statusBloqueioTxt.style.color = '#ff5252';
+          client.publish(topicComando, 'BLOQUEAR');
         } else {
-          btnBloquear.textContent = 'Bloquear';
-          fetch(`${ESP32_IP}/api/desbloquear`).catch(() => {});
+          btnBloquear.textContent = 'Bloquear 🔒';
+          statusBloqueioTxt.textContent = 'Desbloqueado';
+          statusBloqueioTxt.style.color = '#00e676';
+          client.publish(topicComando, 'DESBLOQUEAR');
         }
       } else {
         msgErro.style.display = 'block';
@@ -313,10 +350,11 @@
       if (e.key === 'Enter') validarSenha();
     });
 
-    function atualizarGPS() {
-      fetch(`${ESP32_IP}/api/gps`)
-        .then(res => res.json())
-        .then(data => {
+    // Recebimento de dados do GPS via MQTT
+    client.on('message', (topic, payload) => {
+      if (topic === topicGps) {
+        try {
+          const data = JSON.parse(payload.toString());
           if (data.valid) {
             document.getElementById('txt-status').style.display = 'none';
             document.getElementById('spd-val').textContent = data.speed;
@@ -332,15 +370,11 @@
             document.getElementById('txt-status').style.display = 'block';
             document.getElementById('txt-status').textContent = 'Sinal GPS fraco ou ausente...';
           }
-        })
-        .catch(err => console.error('Erro ao buscar GPS:', err));
-    }
-
-    setInterval(atualizarGPS, 2000);
-    atualizarGPS();
+        } catch (e) {
+          console.error("Erro ao processar JSON do GPS:", e);
+        }
+      }
+    });
   </script>
 </body>
 </html>
-
-
-
